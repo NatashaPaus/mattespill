@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Figurjakten</title>
+<style>
+:root{color-scheme:dark;--bg:#101427;--card:#1c2340;--ink:#f7f4ff;--muted:#bdc7e4;--lime:#d5fa72;--line:#3e4a70}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#30305f,var(--bg) 66%);min-height:100vh;color:var(--ink);font:16px/1.5 system-ui,sans-serif}main{max-width:980px;margin:auto;padding:24px}header,.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.12em}.brand b{color:var(--lime)}button{font:inherit;color:inherit;cursor:pointer;background:#282f51;border:1px solid var(--line);border-radius:13px;padding:12px 16px;text-align:left}button:hover:not(:disabled){background:#39456d}button:focus-visible{outline:3px solid var(--lime);outline-offset:4px}button:disabled{cursor:default}.primary{background:var(--lime);color:#172000;font-weight:850;border-color:var(--lime)}.primary:hover:not(:disabled){background:#e6ffac}h1{font-size:clamp(38px,8vw,76px);line-height:1;margin:.26em 0}h2{line-height:1.2;margin:.35em 0 .7em}p{margin:.5em 0 1em}.muted,small{color:var(--muted)}.eyebrow{color:var(--lime);font-weight:800;letter-spacing:.12em;font-size:.78rem}.hero,.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(16px,4vw,34px)}.hero{margin-top:24px}.levels,.game,.answers{display:grid;gap:12px}.levels{grid-template-columns:repeat(3,1fr)}.levels button{min-height:110px}.levels strong,.levels small{display:block}.levels strong{font-size:1.25rem}.badge{padding:5px 10px;border-radius:20px;background:#333d64;color:#e1e8ff;font-weight:700}.game{grid-template-columns:1fr 1.1fr;margin-top:15px;align-items:start}.diagram{background:#141b32;border-radius:16px;margin:12px 0 5px;overflow:hidden}.diagram svg{display:block;width:100%;height:auto}.diagram text{fill:#fff;font:700 14px system-ui;paint-order:stroke;stroke:#141b32;stroke-width:4;stroke-linejoin:round}.diagram .shape{stroke:#a2aaff;stroke-width:3;fill:#5662b9;fill-opacity:.35}.diagram .aux{stroke:#d5fa72;stroke-width:2;stroke-dasharray:5 4;fill:none}.diagram .mark{stroke:#f8f7ff;stroke-width:2;fill:none}.answers{grid-template-columns:1fr 1fr}.answers button{min-height:60px}.answers .wrong{border-color:#ff859e;color:#ffbdc9}.answers .right{border-color:#baff8a;background:#284c39}.feedback{min-height:3.5em;margin:14px 0}.progress{height:7px;background:#3b4569;border-radius:10px;overflow:hidden;margin-top:10px}.progress b{display:block;height:100%;background:var(--lime)}.footer{margin:18px 0;color:var(--muted);font-size:.9rem}.pill{font-size:.87rem}.next{margin-top:8px}.jolt{animation:jolt .22s ease-in-out}@keyframes jolt{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}@media(max-width:690px){.game,.levels{grid-template-columns:1fr}.levels button{min-height:0}main{padding:14px}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body><main>
+<header><div class="brand">◇ FIGUR<b>JAKTEN</b></div><button id="sound" class="pill" aria-pressed="false">🔇 Lyd av</button></header>
+<div id="app"></div><footer class="footer">Geometri · Spill i eget tempo</footer>
+</main><script>
+'use strict';
+const app=document.getElementById('app'),sound=document.getElementById('sound');
+const names=['Kvadrat','Rektangel','Parallellogram','Likesidet trekant','Likebeint trekant','Rettvinklet trekant','Sirkel'];
+const levels=['Grunnøving','Videre','Utfordring'];
+const desc=['Små tall, oppgitte mål og regnehint.','Desimaltall og litt flere steg.','Finn manglende mål, bruk målestokk eller prøv Pytagoras.'];
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
+const rounded=x=>Math.round((x+1e-9)*100)/100;
+const f=x=>rounded(x).toLocaleString('nb-NO',{maximumFractionDigits:2});
+const label=(x,y,t)=>`<text x="${x}" y="${y}" text-anchor="middle">${t}</text>`;
+const edge=(x,y,X,Y,cls='mark')=>`<path class="${cls}" d="M${x} ${y}L${X} ${Y}"/>`;
+const shape=(pts)=>`<polygon class="shape" points="${pts}"/>`;
+let audio,enabled=false,level=0,figures=[],index=0,part=0,score=0,miss=0,done=false,wrong=new Set(),opts=[],reveal=false;
+sound.onclick=()=>{enabled=!enabled;sound.setAttribute('aria-pressed',enabled);sound.textContent=enabled?'🔊 Lyd på':'🔇 Lyd av';if(enabled)play(true)};
+function play(ok){if(!enabled)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});const t=audio.currentTime; (ok?[523,659,784]:[320,205,140]).forEach((hz,i)=>{const o=audio.createOscillator(),g=audio.createGain(),s=t+i*.085;o.type=ok?'sine':'triangle';o.frequency.setValueAtTime(hz,s);o.frequency.exponentialRampToValueAtTime(hz*(ok?1:.64),s+.13);g.gain.setValueAtTime(.08,s);g.gain.exponentialRampToValueAtTime(.001,s+.15);o.connect(g).connect(audio.destination);o.start(s);o.stop(s+.16)})}catch{}}
+function make(kind,l){
+ let g,h,s,a,p,art,note='',ae,pe,unit='cm';
+ if(kind===0){s=l===0?rnd(2,4):rnd(7,19)/2;g=h=s;a=s*s;p=4*s;
+ art=shape('95,36 205,36 205,146 95,146')+label(150,166,f(s)+' cm')+label(230,96,f(s)+' cm')+'<path class="mark" d="M95 134h12v12 M193 146v-12h12"/>';
+ ae=f(s)+' · '+f(s);pe='4 · '+f(s);
+ }else if(kind===1){g=l===0?rnd(4,6):rnd(6,11);h=l===0?rnd(2,3):rnd(5,11)/2;
+ let k=l===2?.5:1;if(l===2){note='Målestokk 1 : 50. Svar for virkeligheten i meter og kvadratmeter.';unit='m'}
+ art=shape('62,50 238,50 238,138 62,138')+label(150,160,f(g)+' cm')+label(266,98,f(h)+' cm')+'<path class="mark" d="M62 126h12v12 M226 138v-12h12"/>';
+ g*=k;h*=k;a=g*h;p=2*(g+h);ae=f(g)+' · '+f(h);pe='2 · ('+f(g)+' + '+f(h)+')';
+ }else if(kind===2){g=l===0?rnd(5,7):rnd(7,12);h=l===0?3:3.2;s=l===0?5:4; a=g*h;p=2*(g+s);
+ art=shape('50,139 215,139 258,54 93,54')+edge(93,54,93,139,'aux')+'<path class="mark" d="M93 127h12v12"/>'+label(151,161,f(g)+' cm')+label(121,101,f(h)+' cm')+label(263,102,f(s)+' cm');
+ ae=f(g)+' · '+f(h);pe='2 · ('+f(g)+' + '+f(s)+')';note='Den stiplede linja viser høyden.';
+ }else if(kind===3||kind===4){g=kind===3?(l===0?6:rnd(4,9)):6;s=kind===3?g:5;h=kind===3?(l===0?5:Math.round(g*Math.sqrt(3)/2*10)/10):4;a=g*h/2;p=g+2*s;
+ art=shape('65,143 235,143 150,34')+edge(150,34,150,143,'aux')+'<path class="mark" d="M150 131h12v12"/>'+label(150,166,f(g)+' cm')+label(180,104,f(h)+' cm')+label(83,83,f(s)+' cm')+label(219,83,f(s)+' cm');
+ note=kind===3?'Høyden er avrundet. Bruk målet som står på tegningen.':'Den stiplede linja viser høyden.';
+ ae=f(g)+' · '+f(h)+' : 2';pe=f(g)+' + '+f(s)+' + '+f(s);
+ }else if(kind===5){const k=l===0?1:l===1?1.5:3;g=4*k;h=3*k;s=5*k;a=g*h/2;p=g+h+s;
+ art=shape('75,140 240,140 75,43')+'<path class="mark" d="M75 128h12v12"/>'+label(160,162,f(g)+' cm')+label(45,98,f(h)+' cm')+label(174,75,l===2?'?':f(s)+' cm');
+ ae=f(g)+' · '+f(h)+' : 2';pe=(l===2?'√('+f(g)+'² + '+f(h)+'²) = '+f(s)+' cm. ':'')+f(g)+' + '+f(h)+' + '+f(s);
+ note=l===2?'På omkretsoppgaven kan du bruke Pytagoras for å finne den skrå siden.':'Den lille firkanten viser en rett vinkel.';
+ }else{const d=l===0?rnd(2,5)*2:l===1?rnd(5,11):rnd(9,19)/2;const r=d/2;a=3.14*r*r;p=3.14*d;
+ art='<circle class="shape" cx="150" cy="94" r="64"/><circle cx="150" cy="94" r="3" fill="white"/>'+edge(l===2?150:86,94,214,94,'aux')+label(l===2?183:150,82,f(l===2?r:d)+' cm');
+ note='Bruk π ≈ 3,14. Rund av til to desimaler ved behov.';ae='3,14 · '+f(r)+' · '+f(r);pe='3,14 · '+f(d);
+ }return {kind,a:rounded(a),p:rounded(p),art,note,ae,pe,unit};
+}
+function options(q,j){
+ if(!j){const pool=q.kind>=3&&q.kind<=5?[3,4,5,2]:[0,1,2,6];return shuffle(pool.map(k=>names[k]))}
+ const value=j===1?q.a:q.p, alt=j===1?q.p:q.a;
+ const vals=[...new Set([value,alt,value*2,value/2,value+2,value+5,value+9].map(rounded))].slice(0,4);
+ return shuffle(vals.map(v=>f(v)+' '+q.unit+(j===1?'²':'')));
+}
+function correct(q,j){return j===0?names[q.kind]:f(j===1?q.a:q.p)+' '+q.unit+(j===1?'²':'')}
+function home(){app.innerHTML=`<section class="hero"><div class="eyebrow">GEOMETRI PÅ TRE NIVÅER</div><h1>Figurjakten</h1><p>Finn navnet på figuren, regn ut arealet og finn lengden rundt.</p><p><strong>✎ Finn fram kladdeark og blyant.</strong> Bruk gjerne kalkulator. Velg nivå for å starte.</p><p class="muted">Firkanter → trekanter → sirkel</p><div class="levels">${levels.map((v,i)=>`<button data-level="${i}"><strong>${i+1}. ${v}</strong><small>${desc[i]}</small></button>`).join('')}</div></section>`;app.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>start(+b.dataset.level))}
+function start(l){level=l;figures=[0,1,2,3,4,5,6].map(k=>make(k,l));index=part=score=miss=0;prepare()}
+function prepare(){done=reveal=false;wrong=new Set();opts=options(figures[index],part);render()}
+function render(){
+ const q=figures[index],total=figures.length*3,n=index*3+part,ans=correct(q,part);
+ const prompt=['Hva heter figuren?','Hvor stort er arealet?','Hvor lang er omkretsen?'][part];
+ const areaHints=['Gang side med side.','Gang lengde med bredde.','Gang grunnlinja med den stiplede høyden.','Gang grunnlinja med høyden og del på 2.','Gang grunnlinja med høyden og del på 2.','Gang de to sidene ved den rette vinkelen og del på 2.','Del diameteren på 2 for å få radiusen. Regn 3,14 · radius · radius.'];
+ const perimeterHints=['Legg sammen de fire like lange sidene.','Legg sammen alle fire sidene. To og to er like lange.','Legg sammen sidene rundt. Den stiplede høyden er ikke en side.','Legg sammen de tre like lange sidene.','Legg sammen sidene rundt. Ikke bruk den stiplede høyden.','Legg sammen de tre sidelengdene.','Gang diameteren med 3,14.'];
+ const small=part===0?'Velg det mest presise navnet blant alternativene.':level===0?(part===1?areaHints:perimeterHints)[q.kind]:'Regn på kladdearket før du velger.';
+ const result=part===0?ans:(part===1?q.ae:q.pe)+' = '+ans;
+ const msg=done?(reveal?'Løsning: ':'Riktig! ')+result:wrong.size?'Boing! Sjekk målene og prøv igjen.':'';
+ app.innerHTML=`<section class="hero"><div class="row"><span class="badge">${levels[level]} · Figur ${index+1} av ${figures.length}</span><span>${score} / ${total} på første forsøk</span><button id="home" class="pill">Bytt nivå</button></div><div class="progress" role="progressbar" aria-label="Fremdrift" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${n+Number(done)}"><b style="width:${100*(n+Number(done))/total}%"></b></div><div class="game"><div class="card"><div class="eyebrow">FIGUR ${index+1}</div><div class="diagram"><svg viewBox="0 0 300 185" role="img" aria-label="Figur med oppgitte mål">${q.art}</svg></div><small>Skisse – bruk målene som står oppgitt.</small>${q.note?`<p>${q.note}</p>`:''}</div><div class="card"><div class="eyebrow">${['1 · NAVN','2 · AREAL','3 · OMKRETS'][part]}</div><h2>${prompt}</h2><p class="muted">${small}</p><div class="answers">${opts.map((v,i)=>`<button data-choice="${i}" class="${done&&v===ans?'right':wrong.has(i)?'wrong':''}" ${done||wrong.has(i)?'disabled':''}>${v}</button>`).join('')}</div><p class="feedback" role="status">${msg}</p>${done?`<button class="primary next" id="next">${n+1===total?'Se resultat':part===2?'Neste figur':'Neste spørsmål'} →</button>`:wrong.size?`<button id="reveal" class="pill">Vis løsning</button>`:''}</div></div></section>`;
+ document.getElementById('home').onclick=home;
+ app.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{let i=+b.dataset.choice;if(opts[i]===ans){if(!wrong.size)score++;done=true;play(true)}else{wrong.add(i);miss++;play(false)}render();(document.getElementById('next')||app.querySelector('[data-choice]:not(:disabled)'))?.focus();if(!done)app.querySelector('.feedback').classList.add('jolt')});
+ const r=document.getElementById('reveal');if(r)r.onclick=()=>{reveal=done=true;render();document.getElementById('next').focus()};
+ const next=document.getElementById('next');if(next)next.onclick=()=>{if(part===2){part=0;index++}else part++;if(index===figures.length)finish();else{prepare();app.querySelector('[data-choice]').focus()}};
+}
+function finish(){app.innerHTML=`<section class="hero"><div class="eyebrow">${levels[level]}</div><h1>Godt jobbet!</h1><p><strong>${score} av ${figures.length*3}</strong> riktige på første forsøk.</p><div class="row"><button class="primary" id="again">Spill samme nivå igjen</button><button id="choose">Velg nivå</button></div></section>`;document.getElementById('again').onclick=()=>start(level);document.getElementById('choose').onclick=home;document.getElementById('again').focus()}
+home();
+</script></body></html>
